@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense tracker with crud operation</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/css/bootstrap.min.css"
+        integrity="sha384-/Y6pD6FV/Vv2HJnA6t+vslU6fwYXjCFtcEpHbNJ0lyAFsXTsjBbfaDjzALeQsN6M" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz"
+        crossorigin="anonymous"></script>
+    <style>
+        #display {
+            border: 1px solid black;
+            background-color: aliceblue;
+            display: inline-block;
+            width: 100%;
+        }
+
+        #sum {
+            border: 1px solid black;
+            border-radius: 15px;
+            display: inline-block;
+            width: 50%;
+        }
+    </style>
+</head>
+
+<body>
+    <form onsubmit="addbook(event)" class="container">
+        <div class="row">
+            <div class="col">
+                <div class="box">
+                    <label for="book">Books</label>
+                    <input type="text" id="book" name="book" value="">
+                    <input type="submit" id="submitbtn" value="SUBMIT">
+                </div>
+            </div>
+        </div>
+
+    </form>
+
+    <div id="display">
+    </div>
+    <div id="display2">
+    </div>
+
+</body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.4.0/axios.min.js"></script>
+<script src="app.js"></script>
+<script>
+    var sums = 0;
+
+    const display = document.getElementById('display');
+    const display2 = document.getElementById('display2');
+
+    async function addbook(e) {
+        try {
+            e.preventDefault();
+            const book = document.getElementById('book').value;
+
+            var currentdate = new Date();
+            var datetime = currentdate.getDate() + "/"
+                + (currentdate.getMonth() + 1) + "/"
+                + currentdate.getFullYear() + "  "
+                + currentdate.getHours() + ":"
+                + currentdate.getMinutes() + ":"
+                + currentdate.getSeconds();
+
+            var returntime = currentdate.getDate() + "/"
+                + (currentdate.getMonth() + 1) + "/"
+                + currentdate.getFullYear() + "  "
+                + (currentdate.getHours() + 1) + ":"
+                + currentdate.getMinutes() + ":"
+                + currentdate.getSeconds();
+
+            console.log(datetime);
+            const createdAt = datetime;
+            const returnTime = returntime;
+            const currenthour = currentdate.getHours();
+            const obj = { book, createdAt, returntime, currenthour };
+            const res = await postAddBook(obj);
+            console.log('data added');
+        }
+        catch (err) {
+            console.log(err);
+        }
+    }
+
+    function calculateFine(obj) {
+        current = new Date();
+        time = current.getHours() - obj;
+        console.log(time);
+        if (time < 1) {
+            return 0;
+        }
+        else {
+            return (Math.floor(time)) * 10;
+        }
+    }
+
+    //adding data to database
+    async function postAddBook(myobj) {
+        try {
+            const res = await axios.post('http://localhost:3000/add', myobj);
+            console.log(res.data);
+            showdata(res.data.bookdata);
+        }
+        catch (err) {
+            console.log(err);
+        }
+    }
+
+    //show data on screen
+    async function showdata(obj) {
+        try {
+            //calculate fine
+            var fine = calculateFine(obj.hour);
+
+            //showing data to screen along with button
+            const li = document.createElement('li');
+            li.appendChild(document.createTextNode('BOOK NAME:'));
+            li.appendChild(document.createTextNode(obj.book));
+            li.appendChild(document.createElement('br'));
+            li.appendChild(document.createTextNode('Book Taken On:'));
+            li.appendChild(document.createTextNode(obj.createdAt));
+            li.appendChild(document.createElement('br'));
+            li.appendChild(document.createTextNode('Book Return Date: '));
+            li.appendChild(document.createTextNode(obj.returntime));
+            li.appendChild(document.createElement('br'));
+            li.appendChild(document.createTextNode('Current Fine:'));
+            li.appendChild(document.createTextNode(fine));
+            li.appendChild(document.createTextNode("  INR"));
+            li.appendChild(document.createElement('br'));
+            //creating button return book
+            const del = document.createElement('button');
+            del.appendChild(document.createTextNode('Return Book'));
+            li.appendChild(del);
+            display.appendChild(li);
+
+            //remove data from screen and database, update sum on screen
+            del.addEventListener('click', async (e) => {
+                e.preventDefault();
+                //If fine is 0 then return book right away
+                if (fine == 0) {
+                    display.removeChild(li);
+                    const res = await deleteelement(obj);
+                    displayreturned(obj, fine)
+                    console.log('deleted')
+                }
+                else {
+                    display.removeChild(e.target.parentNode);
+                    pay(fine, obj);
+                }
+                console.log('deleted');
+            });
+        }
+        catch (err) { console.log(err) }
+    }
+
+    //To display pay fine box if there is fine
+    async function pay(fine, obj) {
+        var li2 = document.createElement('li');
+
+        var input = document.createElement('input');
+        input.type = 'text';
+        input.value = fine;
+
+        var sub = document.createElement('button');
+        sub.appendChild(document.createTextNode('PAY FINE'));
+
+        li2.appendChild(input);
+        li2.appendChild(sub);
+
+        display.appendChild(li2);
+        sub.addEventListener('click', async (ev) => {
+            ev.preventDefault();
+            console.log('book returned');
+            let del = await deleteelement(obj);
+            display.removeChild(li2);
+            displayreturned(obj, fine)
+        });
+    }
+
+    //display returned book data to bottom
+    function displayreturned(obj, fine) {
+        //To get returned on date.
+        var currentdate = new Date();
+        var datetime = currentdate.getDate() + "/"
+            + (currentdate.getMonth() + 1) + "/"
+            + currentdate.getFullYear() + "  "
+            + currentdate.getHours() + ":"
+            + currentdate.getMinutes() + ":"
+            + currentdate.getSeconds();
+
+        var li = document.createElement('li');
+        li.appendChild(document.createTextNode('BOOK NAME:'));
+        li.appendChild(document.createTextNode(obj.book));
+        li.appendChild(document.createElement('br'));
+        li.appendChild(document.createTextNode('Fine:'));
+        li.appendChild(document.createTextNode(fine));
+        li.appendChild(document.createElement('br'));
+        li.appendChild(document.createTextNode('Returned On:'));
+        li.appendChild(document.createTextNode(datetime));
+        display2.appendChild(li);
+    }
+    //Delete element from database
+    async function deleteelement(obj) {
+        try {
+            axios.post('http://localhost:3000/delete', obj).then(resp => {
+                console.log('deleted element from axios');
+            });
+        }
+        catch (error) {
+            console.log(error);
+        }
+    }
+
+
+    //action perform on reload of screen
+    window.addEventListener("DOMContentLoaded", () => {
+        showonreload();
+    });
+
+    //getting add data from database and display on screen
+    async function showonreload() {
+        try {
+            let sum = 0;
+            const res = await axios.get('http://localhost:3000/data');
+            for (let i = 0; i < res.data.datas.length; i++) {
+                showdata(res.data.datas[i]);
+            }
+        }
+        catch (err) { console.log(err); }
+    }
+</script>
+
+</html>
